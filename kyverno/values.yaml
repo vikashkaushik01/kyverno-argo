@@ -254,6 +254,18 @@ metricsConfig:
   metricsRefreshInterval: ~
     # metricsRefreshInterval: 24h
 
+ # -- (list) Configures the bucket boundaries for all Histogram metrics, changing this configuration requires restart of the kyverno admission controller
+  bucketBoundaries: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 15, 20, 25, 30]
+
+  # -- (map) Configures the exposure of individual metrics, by default all metrics and all labels are exported, changing this configuration requires restart of the kyverno admission controller
+  metricsExposure: ~
+  # metricsExposure:
+  #   kyverno_policy_execution_duration_seconds:
+  #     disabledLabelDimensions: ["resource_kind", "resource_namespace", "resource_request_operation"]
+  #     bucketBoundaries: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5]
+  #   kyverno_admission_review_duration_seconds:
+  #     enabled: false
+
 # -- Image pull secrets for image verification policies, this will define the `--imagePullSecrets` argument
 imagePullSecrets: {}
   # regcred:
@@ -312,21 +324,15 @@ test:
 # -- Additional labels
 customLabels: {}
 
+customAnnotations: {}
+
 webhooksCleanup:
   # -- Create a helm pre-delete hook to cleanup webhooks.
   enabled: true
-
-  image:
-    # -- (string) Image registry
-    registry: ~
-    # -- Image repository
-    repository: bitnami/kubectl
-    # -- Image tag
-    # Defaults to `latest` if omitted
-    tag: '1.26.4'
-    # -- (string) Image pull policy
-    # Defaults to image.pullPolicy if omitted
-    pullPolicy: ~
+  # -- `kubectl` image to run commands for deleting webhooks.
+  image: ghcr.io/nirmata/kubectl:1.29.0
+  # -- Image pull secrets
+  imagePullSecrets: []
 
   # -- Node labels for pod assignment
   nodeSelector: {}
@@ -342,6 +348,20 @@ webhooksCleanup:
 
   # -- Node affinity constraints.
   nodeAffinity: {}
+
+  # -- Security context for webhook cleanup containers
+  securityContext:
+    runAsUser: 65534
+    runAsGroup: 65534
+    runAsNonRoot: true
+    privileged: false
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
 
 grafana:
   # -- Enable grafana dashboard creation.
@@ -372,6 +392,8 @@ features:
   autoUpdateWebhooks:
     # -- Enables the feature
     enabled: true
+  disableAutoWebhookGeneration:
+    enabled: false
   backgroundScan:
     # -- Enables the feature
     enabled: true
@@ -439,10 +461,10 @@ cleanupJobs:
       # -- (string) Image registry
       registry: ~
       # -- Image repository
-      repository: bitnami/kubectl
+      repository: ghcr.io/nirmata/kubectl
       # -- Image tag
       # Defaults to `latest` if omitted
-      tag: '1.26.4'
+      tag: '1.29.0'
       # -- (string) Image pull policy
       # Defaults to image.pullPolicy if omitted
       pullPolicy: ~
@@ -510,10 +532,10 @@ cleanupJobs:
       # -- (string) Image registry
       registry: ~
       # -- Image repository
-      repository: bitnami/kubectl
+      repository: ghcr.io/nirmata/kubectl
       # -- Image tag
       # Defaults to `latest` if omitted
-      tag: '1.26.4'
+      tag: '1.29.0'
       # -- (string) Image pull policy
       # Defaults to image.pullPolicy if omitted
       pullPolicy: ~
@@ -571,7 +593,6 @@ cleanupJobs:
 
     # -- Node affinity constraints.
     nodeAffinity: {}
-
 # Admission controller configuration
 admissionController:
 
@@ -744,7 +765,7 @@ admissionController:
       # -- Image registry
       registry: ghcr.io
       # -- Image repository
-      repository: kyverno/kyvernopre
+      repository: nirmata/kyvernopre
       # -- (string) Image tag
       # If missing, defaults to image.tag
       tag: ~
@@ -786,7 +807,7 @@ admissionController:
       # -- Image registry
       registry: ghcr.io
       # -- Image repository
-      repository: kyverno/kyverno
+      repository: nirmata/kyverno
       # -- (string) Image tag
       # Defaults to appVersion in Chart.yaml if omitted
       tag: ~
@@ -912,7 +933,6 @@ backgroundController:
   # -- Overrides features defined at the root level
   featuresOverride: {}
 
-  # -- Enable background controller.
   enabled: false
 
   rbac:
@@ -944,7 +964,7 @@ backgroundController:
     # -- Image registry
     registry: ghcr.io
     # -- Image repository
-    repository: kyverno/background-controller
+    repository: nirmata/background-controller
     # -- Image tag
     # Defaults to appVersion in Chart.yaml if omitted
     tag:  # replaced in e2e tests
@@ -1131,7 +1151,6 @@ cleanupController:
   # -- Overrides features defined at the root level
   featuresOverride: {}
 
-  # -- Enable cleanup controller.
   enabled: false
 
   rbac:
@@ -1162,7 +1181,7 @@ cleanupController:
     # -- Image registry
     registry: ghcr.io
     # -- Image repository
-    repository: kyverno/cleanup-controller
+    repository: nirmata/cleanup-controller
     # -- (string) Image tag
     # Defaults to appVersion in Chart.yaml if omitted
     tag: ~
@@ -1403,7 +1422,6 @@ reportsController:
   # -- Overrides features defined at the root level
   featuresOverride: {}
 
-  # -- Enable reports controller.
   enabled: false
 
   rbac:
@@ -1430,7 +1448,7 @@ reportsController:
     # -- Image registry
     registry: ghcr.io
     # -- Image repository
-    repository: kyverno/reports-controller
+    repository: nirmata/reports-controller
     # -- (string) Image tag
     # Defaults to appVersion in Chart.yaml if omitted
     tag: ~
@@ -1617,3 +1635,43 @@ reportsController:
     collector: ~
     # -- (string) Otel collector credentials
     creds: ~
+
+# Configmap storing custom CA certificate
+customCAConfigMap:
+
+# Path containing ssl certs within the container. Used only if customCAConfigMap is used
+systemCertPath: /etc/ssl/certs
+
+# License manager configs
+licenseManager:
+  # -- Whether to use license manager
+  resources:
+    # -- Pod resource limits
+    limits:
+      memory: 384Mi
+      cpu: 100m
+    # -- Pod resource requests
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  enable: true
+  # -- License manager repo
+  imageRepository: ghcr.io/nirmata/kyverno-license-manager
+  # -- Image tag
+  imageTag: v0.1.8
+  # -- Product name to be present in license, empty to ignore check
+  productName: ""
+  # -- Validation interval in mins
+  validateIntervalMins: 60
+  # -- License server
+  callHomeServer: nirmata.io
+  # -- License key
+  licenseKey: free-tier-license
+    # -- License secret containing license string under key 'license'
+  licenseSecret:
+  # -- License server API key
+  apiKey:
+  # -- Cluster Id. If not provided, use kube-system uid
+  clusterId:
+  # -- Cluster name. Autogenerated if not provided
+  clusterName:
