@@ -78,12 +78,6 @@ annotations:
     - kind: added
       description: added TUF flags for custom sigstore deployments
 dependencies:
-  - name: grafana
-    version: "0.0.0"
-    condition: grafana.enabled
-  - name: crds
-    version: "3.1.0"
-    condition: crds.install
   - name: kyverno
     version: 3.1.17
     repository: https://nirmata.github.io/kyverno-charts
