@@ -8,7 +8,7 @@ appVersion: v1.10.7-n4k.nirmata.11
 icon: https://github.com/kyverno/kyverno/raw/main/img/logo.png
 description: Kubernetes Native Policy Management
 dependencies:
-  - name: nirmata-kyverno-operator
+  - name: kyverno
     version: 3.0.30-rc1
     repository: https://nirmata.github.io/kyverno-charts
 keywords:
